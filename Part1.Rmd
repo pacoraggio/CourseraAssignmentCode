@@ -1,0 +1,410 @@
+---
+title: "Coursera Statistical Inference Assignment"
+author: "Paolo Coraggio"
+date: "28/10/2019"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=7, fig.height=2, warning=FALSE, message=FALSE)
+```
+
+# Part I: Simulation Exercise
+
+## Overview
+
+The first part of the assignment will investigate how the exponential distribution in R behaves comparing it with the Central Limit Theorem. The mean of exponential distribution is $1/\lambda$ and variance is $1/\lambda^{2}$. 
+
+To compare the sample mean and variance computed from the simulation with theoretical ones, an experiments consisting of building $1000$ experiment of up to $40$ exponential distribution will be performed. Then, as for the mean, it will be shown that the mean of the repeated experiment is approximatively equal to the theoretical value. 
+
+For the variance and standard deviation, a simulation of different sample size, from $2$ to $40$ exponential will be performed and the behavior of the computed variance and standard deviation will be compared through a plot.
+
+Finally, the behavior of the exponential distribution will be compared with the uniform distribution to show that the exponential distribution actually converge to a uniform distribution $N(0,1)$ when the number of experiments grows.  
+
+### Simulation
+
+Parameter $\lambda$ of the distribution is set to $0.2$ for all simulations. 
+
+Following is the basic `r` code for performing the simulations.
+
+```{r, echo=FALSE}
+lambda <- 0.2
+theoretical.exp.mean <- 1/lambda
+theoretical.exp.var <- 1/lambda^2
+theoretical.exp.sd <- 1/lambda
+n_experiment <- 1000
+
+set.seed(1234)
+
+exp_mean_40 <- apply(replicate(n_experiment, rexp(40, lambda)), 2, mean)
+mean_40_exponential <- round(mean(exp_mean_40), 2)
+sd_40_mean <- round(sd(exp_mean_40)/sqrt(40), 2)
+```
+
+
+```{r, echo=FALSE}
+exp_mean_10 <- apply(replicate(n_experiment, rexp(10, lambda)), 2, mean)
+exp_mean_20 <- apply(replicate(n_experiment, rexp(20, lambda)), 2, mean)
+exp_mean_40 <- apply(replicate(n_experiment, rexp(40, lambda)), 2, mean)
+
+mean_10_exponential <- round(mean(exp_mean_10), 2)
+sd_10_mean <- round(sd(exp_mean_10)/sqrt(10), 5)
+mean_20_exponential <- round(mean(exp_mean_20), 2)
+sd_20_mean <- round(sd(exp_mean_10)/sqrt(20), 2)
+mean_40_exponential <- round(mean(exp_mean_40), 2)
+sd_40_mean <- round(sd(exp_mean_40)/sqrt(40), 2)
+
+intervals <- function(cmean, cstd, n ,conf = 0.95)
+{
+    return(cmean + c(-1,1) * qnorm(conf)*cstd/sqrt(n))
+}
+
+a10 <- intervals(mean_10_exponential, sd(exp_mean_10), 10, 0.95)
+a20 <- intervals(mean_20_exponential, sd(exp_mean_20), 20, 0.95)
+a40 <- intervals(mean_40_exponential, sd(exp_mean_40), 40, 0.95)
+
+df_intervals <- data.frame(n_saples = c(10,20,40),
+                           mean = c(mean_10_exponential, 
+                                    mean_20_exponential,
+                                    mean_40_exponential),
+                           l_int = c(round(a10[1],2), round(a20[1],2), round(a40[1],2)),
+                           r_int = c(round(a10[2],2), round(a20[2],2), round(a40[2],2)))
+```
+
+```{r, size="small", eval=FALSE}
+exp_mean_40 <- apply(replicate(1000, rexp(40, lambda)), 2, mean)
+mean_40_exponential <- round(mean(exp_mean_40), 2)
+sd_40_mean <- round(sd(exp_mean_40)/sqrt(40), 2)
+```
+
+A similar code is used to build the dataset for $10$ and $20$ sample size.
+
+As for the variance, a simulation of an increasing number of samples, from $2$ to $40$ is performed and then compare the computed sample variance and standard deviation to the theoretical ones.
+
+```{r, echo=FALSE}
+computed_sd <- c()
+theoretical_sd <- c()
+computed_var <- c()
+theoretical_var <- replicate(length(2:40), theoretical.exp.var)
+
+for(i in 2:40)
+{
+    a1 <- replicate(n_experiment, rexp(i, lambda))
+    computed_var <- c(computed_var, mean(apply(a1, 2, var)))
+    computed_sd <- c(computed_sd, sd(apply(a1, 2, mean)))
+    theoretical_sd <- c(theoretical_sd, 1/lambda/(sqrt(i)))
+}
+
+data_spread <- data.frame(n.exponentials = c(2:40),
+                          computed.sd = computed_sd,
+                          theoretical.sd = theoretical_sd,
+                          computed.var = computed_var,
+                          theoretical.var = theoretical_var)
+
+```
+
+```{r, eval=FALSE}
+for(i in 2:40)
+{
+    a1 <- replicate(n_experiment, rexp(i, lambda))
+    computed_var <- c(computed_var, mean(apply(a1, 2, var)))
+    computed_sd <- c(computed_sd, sd(apply(a1, 2, mean)))
+    theoretical_sd <- c(theoretical_sd, 1/lambda/(sqrt(i)))
+}
+```
+
+Finally, the distribution of a large collection of random exponentials and the distribution of a large collection of averages of 40 exponentials is simulated and compared with the behavior of the same collections of uniform distribution. To show that it converges to a normal distribution, the following `cfunc` function is used to shift the sample mean to $0$. 
+
+```{r, eval=FALSE}
+cfunc <- function(x, n) sqrt(n)*(mean(x) - theoretical.exp.mean)/theoretical.exp.sd
+```
+
+The code for the 40 sample size is similar to the one discussed before. 
+
+```{r, echo=FALSE}
+theoretical.unif.mean <- 1/2
+theoretical.unif.sd <- 1/sqrt(12)
+
+cfunc <- function(x, n) sqrt(n) * (mean(x) - theoretical.exp.mean) /
+    theoretical.exp.sd
+cfunc <- function(x, n) sqrt(n) * (mean(x) - theoretical.unif.mean) /
+    theoretical.unif.sd
+
+exp_1000 <- rexp(n_experiment, rate = lambda); unif_1000 <- runif(n_experiment)
+
+data_exponential_vs_uniform_1000 <- data.frame(exponential = exp_1000,
+                  uniform =  unif_1000)
+
+exponential.40 = apply(replicate(n_experiment, rexp(40, lambda)),
+                            2, cfunc, 40)
+uniform.40 = apply(replicate(n_experiment, runif(40)),
+                            2, cfunc, 40)
+```
+
+```{r, eval=FALSE}
+exp_1000 <- rexp(1000, rate = lambda); unif_1000 <- runif(1000)
+
+exponential.40 = apply(replicate(1000, rexp(40, lambda)), 2, cfunc, 40)
+uniform.40 = apply(replicate(1000, runif(40)), 2, cfunc, 40)
+```
+
+### Sample mean versus Theoretical mean
+
+The following table shows how the mean tend towards to the theoretical value of $5.0$ while the confidence interval becomes narrow as expected under the assumptions of the CLT.
+
+```{r, echo=FALSE}
+knitr::kable(df_intervals, caption = "Mean and 95% interval confidence", col.names = c("N samples", "Mean", "left limit", "right limit"))
+```
+
+Figure A1, in Appendix A, is the histogram of the data showing how the distribution of the means assumes the expected Gaussian shape.
+
+### Sample variance versus Theoretical variance
+
+The following is the plot comparing the theoretical variance and the one computed from the simulation as the number of extraction grow from $2$ to $40$
+
+
+```{r, fig.height=2.8, fig.align='center', echo=FALSE}
+library(reshape2) # melt
+library(dplyr) # mutate
+library(ggplot2)
+library(ggpubr) # ggarrange
+
+dat <- mutate(data_spread, diff.sd = abs(computed.sd - theoretical.sd),
+                       diff.var = abs(computed.var - theoretical.var))
+
+data_sd <- select(dat, contains(".sd"), contains("exp"))
+data_var <- select(dat, contains(".var"), contains("exp"))
+
+plot_dat_sd <- melt(data_sd, id.vars = "n.exponentials")
+plot_dat_var <- melt(data_var, id.vars = "n.exponentials")
+
+
+g_sd <- ggplot(plot_dat_sd, aes(x = n.exponentials, y = value)) +
+    geom_line(aes(colour = variable), alpha = 0.7) +
+    xlab('Number of samples') + 
+    scale_colour_discrete(name="Sd",
+                        breaks=c('computed.sd', 'theoretical.sd', 'diff.sd'),
+                        labels=c('comp', 'th', 'diff')) +
+    theme(legend.position="right") 
+
+g_var <- ggplot(plot_dat_var, aes(x = n.exponentials, y = value)) +
+    geom_line(aes(colour = variable), alpha = 0.7)  +
+    xlab('Number of samples') + 
+    theme(legend.position="right") +
+    scale_colour_discrete(name="Var",
+                        breaks=c('computed.var', 'theoretical.var', 'diff.var'),
+                        labels=c('comp', 'th', 'diff'))
+
+figure <-ggarrange(g_var, g_sd, nrow = 1)
+annotate_figure(figure,
+                top = text_grob("Variance and Standard Deviation - different sample size"),
+                bottom = text_grob("Figure 1: Value of the Variance (left) and Standard deviation (Right) with increasing number of samples", hjust = 1, x = 1, size = 9))
+
+
+```
+
+The plot shows that as the number of exponentials grows, the difference between the computed and theoretical variance and standard deviation goes to $0$ as predicted by the CTL. 
+
+### Distribution
+
+Table 2 summarise the results for the simulation of $1000$ draws from an exponential and uniform distributions with their lower and upper $95%$ confidence interval. The confidence interval is built on the assumption of normal distribution (see `intervals` function in Appendix).
+
+```{r, echo=FALSE}
+# 1000 exponential distributions
+exp_1000 <- rexp(n_experiment, rate = lambda)
+# 1000 uniformal distributions
+unif_1000 <- runif(n_experiment)
+
+cfunc <- function(x, n) sqrt(n) * (mean(x) - theoretical.unif.mean) /
+    theoretical.unif.sd
+uniform.40 = apply(replicate(n_experiment, runif(40)),
+                            2, cfunc, 40)
+exponential.40 = apply(replicate(n_experiment, rexp(40, lambda)),
+                            2, cfunc, 40)
+
+ei <- intervals(mean(exp_1000), sd(exp_1000), n = 1000, conf = 0.95)
+ui <- intervals(mean(unif_1000), sd(unif_1000), n = 1000, conf = 0.95)
+
+data_mean <- data.frame(type <- c("exponential", "uniform"),
+                        mean <- c(round(mean(exp_1000),2), round(mean(unif_1000),2)),
+                        li <- c(round(ei[1],2), round(ui[1],2)),
+                        ri <- c(round(ei[2],2), round(ui[2],2))
+)
+
+names(data_mean) <- c("Distribution", "Mean", "left", "right")
+
+knitr::kable(data_mean, caption = "Exponential vs Uniform - 1000 simulations", col.names = c("Distribution", "Mean", "left limit", "right limit"))
+```
+
+The table shows that the computed mean value match the theoretical value 
+
+Table 3. take into account different sample size ($10$, $20$ and $40$ respectively) of $1000$ draws and computes mean and standard deviation
+
+```{r, echo=FALSE}
+cfunc <- function(x, n) sqrt(n) * (mean(x) - theoretical.unif.mean) /
+    theoretical.unif.sd
+
+data_uniform <- data.frame(uniform.10 = 
+                      apply(replicate(n_experiment, runif(10)),
+                            2, cfunc, 10),
+                  uniform.20 = 
+                      apply(replicate(n_experiment, runif(20)),
+                            2, cfunc, 20),
+                  uniform.40 = 
+                      apply(replicate(n_experiment, runif(40)),
+                            2, cfunc, 40),
+                  size = factor(rep(c(10, 20, 40), rep(n_experiment, 3)))
+)
+
+cfunc <- function(x, n) sqrt(n) * (mean(x) - theoretical.exp.mean) /
+    theoretical.exp.sd
+
+data_exponential <- data.frame(exponential.10 = 
+                      apply(replicate(n_experiment, rexp(10, lambda)),
+                            2, cfunc, 10),
+                  exponential.20 = 
+                      apply(replicate(n_experiment, rexp(20, lambda)),
+                            2, cfunc, 20),
+                  exponential.40 = 
+                      apply(replicate(n_experiment, rexp(40, lambda)),
+                            2, cfunc, 40)
+)
+
+total.data <- data.frame(type = rep(c("exponential", "uniform"),3),
+                         nsamples = rep(c(10,20,40), each = 2),
+                         mean = c(mean(data_exponential$exponential.10),
+                                   mean(data_uniform$uniform.10),
+                                   mean(data_exponential$exponential.20),
+                                   mean(data_uniform$uniform.20),
+                                   mean(data_exponential$exponential.40),
+                                   mean(data_uniform$uniform.40)),
+                         sd = c(sd(data_exponential$exponential.10/sqrt(10)),
+                                sd(data_uniform$uniform.10/sqrt(10)),
+                                 sd(data_exponential$exponential.20/sqrt(20)),
+                                 sd(data_uniform$uniform.20/sqrt(20)),
+                                 sd(data_exponential$exponential.40/sqrt(40)),
+                                 sd(data_uniform$uniform.40/sqrt(40),8)),
+                         th_sd = c(round(1/sqrt(10),2),
+                                   round(1/sqrt(10),2),
+                                   round(1/sqrt(20),2),
+                                   round(1/sqrt(20),2),
+                                   round(1/sqrt(40),2),
+                                   round(1/sqrt(40),2)))
+
+ptable <- total.data
+ptable$mean <- sprintf("%2.e", ptable$mean)
+ptable$sd <- round(ptable$sd, 2)
+
+knitr::kable(ptable, caption = "Exponential Vs Uniform - different sample size", col.names = c("Distribution",
+                                                              "N Samples",
+                                                              "Mean",
+                                                              "Computed Sd",
+                                                              "Expected Sd"))
+
+```
+
+Again, as expected from the CLT, the value of the mean tend to 0 and the computed Standard Deviation tend to the expected one (i.e. $1/\sqrt{nSamples}$).
+
+# Appendix A - Part I, simulation
+
+## The Central Limit Theorem (CLT)
+
+The CLT states that the distribution of averages of independent identically distributed (*iid*) variables becomes that of a standard normal as the sample size increases (cfr "Statistical inference for data science by Brian Caffo). A way to formalise it is that  the following test statistic:
+$$
+\frac{ \bar{X_n} - \mu}{\sigma/n} = \frac{\sqrt{n}(\bar{X_n} - \mu)}{\sigma} = \frac{Estimate - Mean\:of\:estimate}{Std.\:Err.\:of\:estimate}
+$$
+
+## Code
+
+The full code is available on GitHub as Rmd file at the following link. 
+
+
+
+## Plots
+
+Plot showing how the mean of $1000$ repetition of $40$ exponentials match the expected mean.
+
+```{r,fig.align='center', fig.width=3.2, echo=FALSE}
+library(ggplot2)
+n_distrib <- 40
+
+g <- ggplot(data.frame(x = exp_mean_40), aes(x))
+g <- g + geom_histogram(aes(y = ..density..),colour = "black", fill = "salmon", binwidth = 0.3) + 
+    stat_function(fun = dnorm, 
+                  args = list(mean = 1/lambda, sd = 1/lambda/sqrt(n_distrib)),
+                  size = 1.4, alpha = 0.7, colour = "red") +
+    geom_vline(xintercept = mean_40_exponential, size = 1.4, 
+               colour = "black", alpha = 0.6) +
+    geom_vline(xintercept = theoretical.exp.mean, size = 1.3, color = "red",
+               linetype = "dashed") +
+    xlim(2.5,7.5) + labs(title = "40 exponentials draws disitribution",
+                         caption = "Figure A1: distribution of the mean of 40 Exponentials")
+
+g
+```
+
+A comparison between the simulation of 1000 drawings from an exponential and uniform distribution. The computed mean is plotted in the red solid line and theoretical mean with a black dotted line. 
+
+```{r, fig.align='center', echo=FALSE}
+library(ggpubr)
+
+g_exponential <- ggplot(data_exponential_vs_uniform_1000, aes(x = exponential)) +
+    geom_histogram(aes(y = ..density..), binwidth = 2, colour = "black", fill = "red") +
+    stat_function(fun = dexp, args = list(rate = lambda), geom = "area", 
+                  fill = "blue", alpha = 0.3) +
+    geom_vline(xintercept = theoretical.exp.mean, colour = "black",
+               size = 2, alpha = 0.5, linetype = "dotted") +
+    geom_vline(xintercept = mean(exp_1000), colour = "red",
+               size = 2, alpha = 0.5)
+
+g_uniform <- ggplot(data_exponential_vs_uniform_1000, aes(x = uniform)) +
+    geom_histogram(aes(y = ..density..), bins=10, colour = "black", fill = "green") +
+    stat_function(fun = dunif, args = list(min = 0, max = 1), geom = "area", 
+                  fill = "red", alpha = 0.3) +
+    geom_vline(xintercept = theoretical.unif.mean, colour = "black",
+               size = 2, alpha = 0.5, linetype = "dotted") +
+    geom_vline(xintercept = mean(unif_1000), colour = "red",
+               size = 2, alpha = 0.5)
+
+figure <- ggarrange(g_exponential, g_uniform)
+annotate_figure(figure, top = text_grob("Exponential vs Uniform - 1000 draws"),
+                bottom = text_grob("Figure A2: comparison between 1000 draws from an exponential and uniform distribution", hjust = 1, x = 1, size = 9))
+```
+
+The following is the comparison between uniform and exponential of a large collection of averages, respectively $10$, $20$, $40$ samples. The distributions has been shifted to a Normal disitrbution with mean equal to $0$ and standard deviation equal to $1$. 
+
+```{r,fig.align='center',fig.height=3.5,  echo=FALSE}
+library(ggpubr)
+
+	mdat_uniform <- melt(data_uniform)
+
+g_uniform <- ggplot(mdat_uniform, aes(value, fill = variable)) +
+    geom_histogram(colour = "black", aes(y = ..density..), binwidth = 0.2) +
+    stat_function(fun = dnorm, size = 1.3) + 
+    xlim(-3,3) +
+    facet_wrap(. ~ variable) +
+    scale_fill_discrete(name="Number of samples",
+                        breaks=c('uniform.10', 'uniform.20', 'uniform.40'),
+                        labels=c('10','20','40'))
+
+mdat_exponential <- melt(data_exponential)
+
+g_exponential <- ggplot(mdat_exponential, aes(value, fill = variable)) +
+    geom_histogram(colour = "black", aes(y = ..density..), binwidth = 0.2) +
+    stat_function(fun = dnorm, size = 1.3) + 
+    xlim(-3,3) +
+    facet_wrap(. ~ variable) +                   
+    scale_fill_discrete(name="Number of samples",
+                        breaks=c('exponential.10', 'exponential.20', 'exponential.40'),
+                        labels=c('10','20','40'))
+
+figure <- ggarrange(g_exponential, g_uniform, nrow = 2)
+annotate_figure(figure,
+                top = text_grob("Exponential vs Uniform - different sample size"),
+                bottom = text_grob("Figure A3: Exponential and Uniform distribution with different sample size", hjust = 1, x = 1, size = 9))
+```
+
